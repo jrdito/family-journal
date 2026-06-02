@@ -1,0 +1,20 @@
+{
+  "/(app)/admin/page": "app/(app)/admin/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/journals/[id]/edit/page": "app/(app)/journals/[id]/edit/page.js",
+  "/(app)/journals/[id]/page": "app/(app)/journals/[id]/page.js",
+  "/(app)/journals/new/page": "app/(app)/journals/new/page.js",
+  "/(app)/journals/page": "app/(app)/journals/page.js",
+  "/(app)/profile/page": "app/(app)/profile/page.js",
+  "/(app)/timeline/page": "app/(app)/timeline/page.js",
+  "/(app)/visited/page": "app/(app)/visited/page.js",
+  "/(app)/wishlist/page": "app/(app)/wishlist/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/export/route": "app/api/export/route.js",
+  "/api/telegram/webhook/route": "app/api/telegram/webhook/route.js",
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/register/page": "app/register/page.js"
+}

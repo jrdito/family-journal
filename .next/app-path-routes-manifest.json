@@ -1,0 +1,20 @@
+{
+  "/(app)/admin/page": "/admin",
+  "/(app)/dashboard/page": "/dashboard",
+  "/(app)/journals/[id]/edit/page": "/journals/[id]/edit",
+  "/(app)/journals/[id]/page": "/journals/[id]",
+  "/(app)/journals/new/page": "/journals/new",
+  "/(app)/journals/page": "/journals",
+  "/(app)/profile/page": "/profile",
+  "/(app)/timeline/page": "/timeline",
+  "/(app)/visited/page": "/visited",
+  "/(app)/wishlist/page": "/wishlist",
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/export/route": "/api/export",
+  "/api/telegram/webhook/route": "/api/telegram/webhook",
+  "/auth/callback/route": "/auth/callback",
+  "/login/page": "/login",
+  "/page": "/",
+  "/register/page": "/register"
+}
