@@ -1,6 +1,6 @@
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,17 +84,18 @@ export async function GET(request: NextRequest) {
       return row
     })
 
-    const worksheet = XLSX.utils.json_to_sheet(rows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Family Journal')
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Family Journal')
 
-    // Auto-size columns
-    const cols = Object.keys(rows[0]).map(key => ({
-      wch: Math.max(key.length, ...rows.map(r => String(r[key] || '').length)) + 2
+    const columns = Object.keys(rows[0]).map(key => ({
+      header: key,
+      key,
+      width: Math.max(key.length, ...rows.map(r => String(r[key] || '').length)) + 2,
     }))
-    worksheet['!cols'] = cols
+    worksheet.columns = columns
+    worksheet.addRows(rows)
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+    const buffer = await workbook.xlsx.writeBuffer()
     const filename = exportAll
       ? `family-journal-all-${new Date().toISOString().split('T')[0]}.xlsx`
       : `family-journal-${new Date().toISOString().split('T')[0]}.xlsx`
