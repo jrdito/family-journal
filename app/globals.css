@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 255 251 247;
+    --foreground: 28 25 23;
+    --card: 255 255 255;
+    --card-foreground: 28 25 23;
+    --muted: 245 240 235;
+    --muted-foreground: 120 113 108;
+    --border: 231 224 216;
+    --input: 231 224 216;
+    --ring: 249 115 22;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 18 17 16;
+    --foreground: 245 240 235;
+    --card: 28 27 26;
+    --card-foreground: 245 240 235;
+    --muted: 40 38 36;
+    --border: 54 52 50;
+    --input: 54 52 50;
+    --muted-foreground: 161 155 148;
+  }
+
+  * {
+    @apply border;
+    border-color: rgb(var(--border));
+  }
+
+  body {
+    @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))];
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-white dark:bg-gray-900/70 border border-orange-100/50 dark:border-gray-800 shadow-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-500 text-white font-semibold text-sm hover:bg-brand-600 active:scale-95 transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all duration-150 shadow-sm;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 active:scale-95 transition-all duration-150;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all duration-150;
+  }
+
+  .label {
+    @apply block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .page-header {
+    @apply text-2xl font-display font-bold text-gray-900 dark:text-white tracking-tight;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-600 rounded-full; }
+
+/* Star rating */
+.star-filled { color: #f59e0b; }
+.star-empty { color: #d1d5db; }
+
+/* Photo grid */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
