@@ -22,15 +22,12 @@ async function sendMessage(chatId: number, text: string, options?: object) {
   })
 }
 
-async function sendInlineKeyboard(chatId: number, text: string, buttons: string[][]) {
+async function sendReplyKeyboard(chatId: number, text: string, buttons: string[][]) {
   await sendMessage(chatId, text, {
     reply_markup: {
-      inline_keyboard: buttons.map(row =>
-        row.map(text => ({
-          text,
-          callback_data: `opt:${Buffer.from(text, 'utf8').toString('base64url')}`,
-        }))
-      ),
+      keyboard: buttons.map(row => row.map(text => ({ text }))),
+      one_time_keyboard: true,
+      resize_keyboard: true,
     },
   })
 }
@@ -41,22 +38,25 @@ async function removeKeyboard(chatId: number, text: string) {
   })
 }
 
-function isValidOption(value: string, options: readonly string[]) {
-  return options.includes(value)
+function chunkOptions(options: string[], size: number) {
+  const rows: string[][] = []
+  for (let i = 0; i < options.length; i += size) {
+    rows.push(options.slice(i, i + size))
+  }
+  return rows
 }
 
-function buildVerdictKeyboard() {
-  return [FAMILY_VERDICTS.slice(0, 3), FAMILY_VERDICTS.slice(3)]
+function buildChoiceKeyboard(options: string[], columns = 2) {
+  return [...chunkOptions(options, columns), ['SKIP']]
 }
 
 function buildYesNoKeyboard() {
-  return [['YES', 'NO']]
+  return buildChoiceKeyboard(['YES', 'NO'], 2)
 }
 
-function decodeOption(value: string) {
-  if (!value.startsWith('opt:')) return value
-  const encoded = value.slice(4)
-  return Buffer.from(encoded, 'base64url').toString('utf8')
+function findOption(input: string, options: string[]) {
+  const normalized = input.trim().toUpperCase()
+  return options.find(option => option.toUpperCase() === normalized) || null
 }
 
 async function getLinkedUser(telegramId: string) {
@@ -270,44 +270,50 @@ async function handleConversation(chatId: number, text: string, userId: string |
   const state = conversationState.get(chatId)
   if (!state) return false
 
-  const PLACE_CATEGORIES = ['Restaurant', 'Cafe', 'Kids Playground', 'Tourist Attraction', 'Mall', 'Hotel', 'Outdoor', 'Other']
-  const EVENT_CATEGORIES = ['Kids Event', 'Family Event', 'Bazaar', 'Exhibition', 'Concert', 'Workshop', 'School Event', 'Mall Event', 'Festival', 'Other']
   const skip = text.toLowerCase() === 'skip' || text === '-'
-  const verdictOptions = FAMILY_VERDICTS
-  const statusOptions = state.type === 'PLACE' ? PLACE_STATUSES : EVENT_STATUSES
   const invalidPrompt = 'Please choose one of the available options.'
 
-  // PLACE flow
-  const placeSteps: Record<string, { next: string; key: string; msg: string; buttons?: string[][] }> = {
-    place_name: { next: 'place_category', key: 'name', msg: 'Category?', buttons: [PLACE_CATEGORIES.slice(0, 4), PLACE_CATEGORIES.slice(4)] },
-    place_category: { next: 'place_city', key: 'category', msg: 'City? (or "skip")' },
-    place_city: { next: 'place_address', key: 'city', msg: 'Address? (or "skip")' },
-    place_address: { next: 'place_maps', key: 'address', msg: 'Google Maps URL? (or "skip")' },
+  type StepConfig = {
+    next: string
+    key: string
+    msg: string
+    buttons?: string[][]
+    options?: string[]
+    required?: boolean
+  }
+
+  const PLACE_CATEGORIES = ['Restaurant', 'Cafe', 'Kids Playground', 'Tourist Attraction', 'Mall', 'Hotel', 'Outdoor', 'Other']
+  const EVENT_CATEGORIES = ['Kids Event', 'Family Event', 'Bazaar', 'Exhibition', 'Concert', 'Workshop', 'School Event', 'Mall Event', 'Festival', 'Other']
+
+  const placeSteps: Record<string, StepConfig> = {
+    place_name: { next: 'place_category', key: 'name', msg: 'Place name? (or "skip")' },
+    place_category: { next: 'place_city', key: 'category', msg: 'Category?', buttons: buildChoiceKeyboard(PLACE_CATEGORIES, 2), options: PLACE_CATEGORIES },
+    place_city: { next: 'place_address', key: 'city', msg: 'City? (or "skip")' },
+    place_address: { next: 'place_maps', key: 'address', msg: 'Address? (or "skip")' },
     place_maps: { next: 'place_status', key: 'google_maps_url', msg: 'Google Maps URL? (or "skip")' },
-    place_status: { next: 'place_date', key: 'status', msg: 'Status?', buttons: [PLACE_STATUSES] },
+    place_status: { next: 'place_date', key: 'status', msg: 'Status?', buttons: buildChoiceKeyboard(PLACE_STATUSES, 2), options: PLACE_STATUSES, required: true },
     place_date: { next: 'place_rating', key: 'visit_date', msg: 'Visit date? (YYYY-MM-DD, or "skip")' },
-    place_rating: { next: 'place_kid', key: 'rating', msg: 'Rating? (1-5, or "skip")', buttons: [['1','2','3','4','5','SKIP']] },
-    place_kid: { next: 'place_budget', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard() },
+    place_rating: { next: 'place_kid', key: 'rating', msg: 'Rating?', buttons: buildChoiceKeyboard(['1', '2', '3', '4', '5'], 2), options: ['1', '2', '3', '4', '5'] },
+    place_kid: { next: 'place_budget', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard(), options: ['YES', 'NO'] },
     place_budget: { next: 'place_verdict', key: 'budget_estimate', msg: 'Budget estimate in IDR? (or "skip")' },
-    place_verdict: { next: 'place_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildVerdictKeyboard() },
+    place_verdict: { next: 'place_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildChoiceKeyboard(FAMILY_VERDICTS, 2), options: FAMILY_VERDICTS },
     place_notes: { next: 'done', key: 'notes', msg: 'Any notes? (or "skip")' },
   }
 
-  // EVENT flow
-  const eventSteps: Record<string, { next: string; key: string; msg: string; buttons?: string[][] }> = {
-    event_name: { next: 'event_category', key: 'name', msg: 'Category?', buttons: [EVENT_CATEGORIES.slice(0, 4), EVENT_CATEGORIES.slice(4)] },
-    event_category: { next: 'event_location', key: 'category', msg: 'Location/Venue name? (or "skip")' },
-    event_location: { next: 'event_city', key: 'location_name', msg: 'City? (or "skip")' },
-    event_city: { next: 'event_start', key: 'city', msg: 'Start date? (YYYY-MM-DD, or "skip")' },
-    event_start: { next: 'event_end', key: 'event_start_date', msg: 'End date? (YYYY-MM-DD, or "skip")' },
-    event_end: { next: 'event_time', key: 'event_end_date', msg: 'Event time? (HH:MM, or "skip")' },
-    event_time: { next: 'event_ticket', key: 'event_time', msg: 'Ticket price in IDR? (0 for free, or "skip")' },
-    event_ticket: { next: 'event_maps', key: 'ticket_price', msg: 'Google Maps URL? (or "skip")' },
+  const eventSteps: Record<string, StepConfig> = {
+    event_name: { next: 'event_category', key: 'name', msg: 'Event name? (or "skip")' },
+    event_category: { next: 'event_location', key: 'category', msg: 'Category?', buttons: buildChoiceKeyboard(EVENT_CATEGORIES, 2), options: EVENT_CATEGORIES },
+    event_location: { next: 'event_city', key: 'location_name', msg: 'Location/Venue name? (or "skip")' },
+    event_city: { next: 'event_start', key: 'city', msg: 'City? (or "skip")' },
+    event_start: { next: 'event_end', key: 'event_start_date', msg: 'Start date? (YYYY-MM-DD, or "skip")' },
+    event_end: { next: 'event_time', key: 'event_end_date', msg: 'End date? (YYYY-MM-DD, or "skip")' },
+    event_time: { next: 'event_ticket', key: 'event_time', msg: 'Event time? (HH:MM, or "skip")' },
+    event_ticket: { next: 'event_maps', key: 'ticket_price', msg: 'Ticket price in IDR? (0 for free, or "skip")' },
     event_maps: { next: 'event_status', key: 'google_maps_url', msg: 'Google Maps URL? (or "skip")' },
-    event_status: { next: 'event_rating', key: 'status', msg: 'Status?', buttons: [EVENT_STATUSES] },
-    event_rating: { next: 'event_kid', key: 'rating', msg: 'Rating? (1-5, or "skip")', buttons: [['1','2','3','4','5','SKIP']] },
-    event_kid: { next: 'event_verdict', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard() },
-    event_verdict: { next: 'event_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildVerdictKeyboard() },
+    event_status: { next: 'event_rating', key: 'status', msg: 'Status?', buttons: buildChoiceKeyboard(EVENT_STATUSES, 2), options: EVENT_STATUSES, required: true },
+    event_rating: { next: 'event_kid', key: 'rating', msg: 'Rating?', buttons: buildChoiceKeyboard(['1', '2', '3', '4', '5'], 2), options: ['1', '2', '3', '4', '5'] },
+    event_kid: { next: 'event_verdict', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard(), options: ['YES', 'NO'] },
+    event_verdict: { next: 'event_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildChoiceKeyboard(FAMILY_VERDICTS, 2), options: FAMILY_VERDICTS },
     event_notes: { next: 'done', key: 'notes', msg: 'Any notes? (or "skip")' },
   }
 
@@ -316,58 +322,43 @@ async function handleConversation(chatId: number, text: string, userId: string |
   if (!currentStep) return false
 
   // Parse value
-  let value: unknown = skip ? null : text.trim()
-  if (!skip) {
-    if (currentStep.key === 'rating') {
-      const rating = Number(text)
-      if (Number.isNaN(rating) || rating < 1 || rating > 5) {
-        await sendInlineKeyboard(chatId, invalidPrompt, currentStep.buttons || [])
+  let value: unknown = null
+  if (currentStep.options) {
+    const normalized = text.trim().toUpperCase()
+    if (skip || normalized === 'SKIP') {
+      if (currentStep.required) {
+        await sendReplyKeyboard(chatId, 'Status is required. Please choose one of the available options.', currentStep.buttons || buildChoiceKeyboard(currentStep.options, 2))
         return true
       }
-      value = rating
-    }
+      value = null
+    } else {
+      const matched = findOption(text, currentStep.options)
+      if (!matched) {
+        await sendReplyKeyboard(chatId, invalidPrompt, currentStep.buttons || buildChoiceKeyboard(currentStep.options, 2))
+        return true
+      }
 
-    if (currentStep.key === 'ticket_price' || currentStep.key === 'budget_estimate') {
+      if (currentStep.key === 'rating') {
+        value = Number(matched)
+      } else if (currentStep.key === 'kid_friendly') {
+        value = matched === 'YES'
+      } else {
+        value = matched
+      }
+    }
+  } else {
+    if (skip) {
+      value = null
+    } else if (currentStep.key === 'ticket_price' || currentStep.key === 'budget_estimate') {
       const amount = Number(text)
       if (Number.isNaN(amount) || amount < 0) {
         await removeKeyboard(chatId, invalidPrompt)
         return true
       }
       value = amount
+    } else {
+      value = text.trim()
     }
-
-    if (currentStep.key === 'kid_friendly') {
-      const normalized = text.trim().toUpperCase()
-      if (normalized !== 'YES' && normalized !== 'NO') {
-        await sendInlineKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
-        return true
-      }
-      value = normalized === 'YES'
-    }
-
-    if (currentStep.key === 'family_verdict') {
-      const normalized = text.trim().toUpperCase()
-      if (!isValidOption(normalized, verdictOptions)) {
-        await sendInlineKeyboard(chatId, invalidPrompt, buildVerdictKeyboard())
-        return true
-      }
-      value = normalized === 'SKIP' ? null : normalized
-    }
-
-    if (currentStep.key === 'status') {
-      const normalized = text.trim().toUpperCase()
-      if (!isValidOption(normalized, statusOptions)) {
-        await sendInlineKeyboard(chatId, invalidPrompt, [statusOptions])
-        return true
-      }
-      value = normalized
-    }
-  } else if (currentStep.key === 'status') {
-    await sendInlineKeyboard(chatId, 'Status is required. Please choose one of the available options.', [statusOptions])
-    return true
-  } else if (currentStep.key === 'kid_friendly') {
-    await sendInlineKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
-    return true
   }
 
   // Update state
@@ -395,7 +386,7 @@ async function handleConversation(chatId: number, text: string, userId: string |
 
   const nextStep = steps[currentStep.next]
   if (nextStep?.buttons) {
-    await sendInlineKeyboard(chatId, nextStep.msg, nextStep.buttons)
+    await sendReplyKeyboard(chatId, nextStep.msg, nextStep.buttons)
   } else {
     await removeKeyboard(chatId, nextStep?.msg || 'Next...')
   }
@@ -412,27 +403,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-
-    if (body.callback_query) {
-      const callbackQuery = body.callback_query
-      const chatId: number = callbackQuery.message?.chat.id
-      const from = callbackQuery.from
-      const selected = decodeOption(callbackQuery.data || '')
-
-      await fetch(`${API_URL}/answerCallbackQuery`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callback_query_id: callbackQuery.id }),
-      })
-
-      if (chatId && selected) {
-        const linkedUser = await getLinkedUser(String(from.id))
-        await handleConversation(chatId, selected, linkedUser?.user_id || null)
-      }
-
-      return NextResponse.json({ ok: true })
-    }
-
     const message = body.message || body.edited_message
     if (!message) return NextResponse.json({ ok: true })
 
