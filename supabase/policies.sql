@@ -110,7 +110,7 @@ CREATE POLICY "photos_delete_own"
 -- Users can select their own telegram link
 CREATE POLICY "telegram_select_own"
   ON public.telegram_user_links FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id OR user_id IS NULL);
 
 -- Users can insert telegram links (for linking)
 CREATE POLICY "telegram_insert_own"

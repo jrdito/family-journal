@@ -83,14 +83,24 @@ First time? Use /link to connect your account.`)
 
     const linkCode = generateLinkCode()
     // Delete any existing pending link for this telegram_id
-    await admin.from('telegram_user_links').delete().eq('telegram_id', telegramId)
-    // Create new link record
-    await admin.from('telegram_user_links').insert({
+    const { error: deleteError } = await admin.from('telegram_user_links').delete().eq('telegram_id', telegramId)
+    if (deleteError) {
+      console.error('Telegram /link cleanup failed:', deleteError)
+    }
+
+    const { error: insertError } = await admin.from('telegram_user_links').insert({
       telegram_id: telegramId,
       telegram_username: username,
       link_code: linkCode,
       is_linked: false,
     })
+
+    if (insertError) {
+      console.error('Telegram /link insert failed:', insertError)
+      await sendMessage(chatId, '⚠️ Sorry, something went wrong while creating your link code. Please try /link again.')
+      return
+    }
+
     await sendMessage(chatId, `🔗 <b>Your link code is:</b>
 
 <code>${linkCode}</code>

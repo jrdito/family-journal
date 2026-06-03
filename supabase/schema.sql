@@ -87,6 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_journal_photos_journal_id  ON public.journal_phot
 CREATE INDEX IF NOT EXISTS idx_journal_photos_user_id     ON public.journal_photos(user_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_links_telegram_id ON public.telegram_user_links(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_links_link_code   ON public.telegram_user_links(link_code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_links_unique_pending_code ON public.telegram_user_links(link_code) WHERE is_linked = false;
 
 -- ============================================================
 -- AUTO-UPDATE updated_at trigger
