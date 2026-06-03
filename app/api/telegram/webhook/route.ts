@@ -46,12 +46,20 @@ function chunkOptions(options: string[], size: number) {
   return rows
 }
 
-function buildChoiceKeyboard(options: string[], columns = 2) {
+function buildChoiceKeyboard(options: string[], columns = 1) {
   return [...chunkOptions(options, columns), ['SKIP']]
 }
 
 function buildYesNoKeyboard() {
-  return buildChoiceKeyboard(['YES', 'NO'], 2)
+  return buildChoiceKeyboard(['YES', 'NO'], 1)
+}
+
+function buildSkipKeyboard() {
+  return [['SKIP']]
+}
+
+function getPromptKeyboard(step?: { buttons?: string[][] }) {
+  return step?.buttons || buildSkipKeyboard()
 }
 
 function findOption(input: string, options: string[]) {
@@ -293,10 +301,10 @@ async function handleConversation(chatId: number, text: string, userId: string |
     place_maps: { next: 'place_status', key: 'google_maps_url', msg: 'Google Maps URL? (or "skip")' },
     place_status: { next: 'place_date', key: 'status', msg: 'Status?', buttons: buildChoiceKeyboard(PLACE_STATUSES, 2), options: PLACE_STATUSES, required: true },
     place_date: { next: 'place_rating', key: 'visit_date', msg: 'Visit date? (YYYY-MM-DD, or "skip")' },
-    place_rating: { next: 'place_kid', key: 'rating', msg: 'Rating?', buttons: buildChoiceKeyboard(['1', '2', '3', '4', '5'], 2), options: ['1', '2', '3', '4', '5'] },
+    place_rating: { next: 'place_kid', key: 'rating', msg: 'Rating?', buttons: buildChoiceKeyboard(['1', '2', '3', '4', '5'], 1), options: ['1', '2', '3', '4', '5'] },
     place_kid: { next: 'place_budget', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard(), options: ['YES', 'NO'] },
     place_budget: { next: 'place_verdict', key: 'budget_estimate', msg: 'Budget estimate in IDR? (or "skip")' },
-    place_verdict: { next: 'place_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildChoiceKeyboard(FAMILY_VERDICTS, 2), options: FAMILY_VERDICTS },
+    place_verdict: { next: 'place_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildChoiceKeyboard(FAMILY_VERDICTS, 1), options: FAMILY_VERDICTS },
     place_notes: { next: 'done', key: 'notes', msg: 'Any notes? (or "skip")' },
   }
 
@@ -311,9 +319,9 @@ async function handleConversation(chatId: number, text: string, userId: string |
     event_ticket: { next: 'event_maps', key: 'ticket_price', msg: 'Ticket price in IDR? (0 for free, or "skip")' },
     event_maps: { next: 'event_status', key: 'google_maps_url', msg: 'Google Maps URL? (or "skip")' },
     event_status: { next: 'event_rating', key: 'status', msg: 'Status?', buttons: buildChoiceKeyboard(EVENT_STATUSES, 2), options: EVENT_STATUSES, required: true },
-    event_rating: { next: 'event_kid', key: 'rating', msg: 'Rating?', buttons: buildChoiceKeyboard(['1', '2', '3', '4', '5'], 2), options: ['1', '2', '3', '4', '5'] },
+    event_rating: { next: 'event_kid', key: 'rating', msg: 'Rating?', buttons: buildChoiceKeyboard(['1', '2', '3', '4', '5'], 1), options: ['1', '2', '3', '4', '5'] },
     event_kid: { next: 'event_verdict', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard(), options: ['YES', 'NO'] },
-    event_verdict: { next: 'event_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildChoiceKeyboard(FAMILY_VERDICTS, 2), options: FAMILY_VERDICTS },
+    event_verdict: { next: 'event_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildChoiceKeyboard(FAMILY_VERDICTS, 1), options: FAMILY_VERDICTS },
     event_notes: { next: 'done', key: 'notes', msg: 'Any notes? (or "skip")' },
   }
 
@@ -327,14 +335,14 @@ async function handleConversation(chatId: number, text: string, userId: string |
     const normalized = text.trim().toUpperCase()
     if (skip || normalized === 'SKIP') {
       if (currentStep.required) {
-        await sendReplyKeyboard(chatId, 'Status is required. Please choose one of the available options.', currentStep.buttons || buildChoiceKeyboard(currentStep.options, 2))
+        await sendReplyKeyboard(chatId, 'Status is required. Please choose one of the available options.', getPromptKeyboard(currentStep))
         return true
       }
       value = null
     } else {
       const matched = findOption(text, currentStep.options)
       if (!matched) {
-        await sendReplyKeyboard(chatId, invalidPrompt, currentStep.buttons || buildChoiceKeyboard(currentStep.options, 2))
+        await sendReplyKeyboard(chatId, invalidPrompt, getPromptKeyboard(currentStep))
         return true
       }
 
@@ -385,11 +393,7 @@ async function handleConversation(chatId: number, text: string, userId: string |
   }
 
   const nextStep = steps[currentStep.next]
-  if (nextStep?.buttons) {
-    await sendReplyKeyboard(chatId, nextStep.msg, nextStep.buttons)
-  } else {
-    await removeKeyboard(chatId, nextStep?.msg || 'Next...')
-  }
+  await sendReplyKeyboard(chatId, nextStep?.msg || 'Next...', getPromptKeyboard(nextStep))
 
   return true
 }
