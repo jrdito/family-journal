@@ -22,12 +22,15 @@ async function sendMessage(chatId: number, text: string, options?: object) {
   })
 }
 
-async function sendReplyKeyboard(chatId: number, text: string, buttons: string[][]) {
+async function sendInlineKeyboard(chatId: number, text: string, buttons: string[][]) {
   await sendMessage(chatId, text, {
     reply_markup: {
-      keyboard: buttons.map(row => row.map(text => ({ text }))),
-      one_time_keyboard: true,
-      resize_keyboard: true,
+      inline_keyboard: buttons.map(row =>
+        row.map(text => ({
+          text,
+          callback_data: `opt:${Buffer.from(text, 'utf8').toString('base64url')}`,
+        }))
+      ),
     },
   })
 }
@@ -48,6 +51,12 @@ function buildVerdictKeyboard() {
 
 function buildYesNoKeyboard() {
   return [['YES', 'NO']]
+}
+
+function decodeOption(value: string) {
+  if (!value.startsWith('opt:')) return value
+  const encoded = value.slice(4)
+  return Buffer.from(encoded, 'base64url').toString('utf8')
 }
 
 async function getLinkedUser(telegramId: string) {
@@ -312,7 +321,7 @@ async function handleConversation(chatId: number, text: string, userId: string |
     if (currentStep.key === 'rating') {
       const rating = Number(text)
       if (Number.isNaN(rating) || rating < 1 || rating > 5) {
-        await sendReplyKeyboard(chatId, invalidPrompt, currentStep.buttons || [])
+        await sendInlineKeyboard(chatId, invalidPrompt, currentStep.buttons || [])
         return true
       }
       value = rating
@@ -330,7 +339,7 @@ async function handleConversation(chatId: number, text: string, userId: string |
     if (currentStep.key === 'kid_friendly') {
       const normalized = text.trim().toUpperCase()
       if (normalized !== 'YES' && normalized !== 'NO') {
-        await sendReplyKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
+        await sendInlineKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
         return true
       }
       value = normalized === 'YES'
@@ -339,7 +348,7 @@ async function handleConversation(chatId: number, text: string, userId: string |
     if (currentStep.key === 'family_verdict') {
       const normalized = text.trim().toUpperCase()
       if (!isValidOption(normalized, verdictOptions)) {
-        await sendReplyKeyboard(chatId, invalidPrompt, buildVerdictKeyboard())
+        await sendInlineKeyboard(chatId, invalidPrompt, buildVerdictKeyboard())
         return true
       }
       value = normalized === 'SKIP' ? null : normalized
@@ -348,16 +357,16 @@ async function handleConversation(chatId: number, text: string, userId: string |
     if (currentStep.key === 'status') {
       const normalized = text.trim().toUpperCase()
       if (!isValidOption(normalized, statusOptions)) {
-        await sendReplyKeyboard(chatId, invalidPrompt, [statusOptions])
+        await sendInlineKeyboard(chatId, invalidPrompt, [statusOptions])
         return true
       }
       value = normalized
     }
   } else if (currentStep.key === 'status') {
-    await sendReplyKeyboard(chatId, 'Status is required. Please choose one of the available options.', [statusOptions])
+    await sendInlineKeyboard(chatId, 'Status is required. Please choose one of the available options.', [statusOptions])
     return true
   } else if (currentStep.key === 'kid_friendly') {
-    await sendReplyKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
+    await sendInlineKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
     return true
   }
 
@@ -386,7 +395,7 @@ async function handleConversation(chatId: number, text: string, userId: string |
 
   const nextStep = steps[currentStep.next]
   if (nextStep?.buttons) {
-    await sendReplyKeyboard(chatId, nextStep.msg, nextStep.buttons)
+    await sendInlineKeyboard(chatId, nextStep.msg, nextStep.buttons)
   } else {
     await removeKeyboard(chatId, nextStep?.msg || 'Next...')
   }
@@ -403,6 +412,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    if (body.callback_query) {
+      const callbackQuery = body.callback_query
+      const chatId: number = callbackQuery.message?.chat.id
+      const from = callbackQuery.from
+      const selected = decodeOption(callbackQuery.data || '')
+
+      await fetch(`${API_URL}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQuery.id }),
+      })
+
+      if (chatId && selected) {
+        const linkedUser = await getLinkedUser(String(from.id))
+        await handleConversation(chatId, selected, linkedUser?.user_id || null)
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
     const message = body.message || body.edited_message
     if (!message) return NextResponse.json({ ok: true })
 
