@@ -1,3 +1,0 @@
-module.exports=[60692,a=>{"use strict";var b=a.i(87924),c=a.i(97895);a.s(["default",0,function({rating:a,size:d="md",interactive:e,onRate:f}){return(0,b.jsxs)("div",{className:(0,c.cn)("flex items-center gap-0.5",{sm:"text-xs",md:"text-sm",lg:"text-base"}[d]),children:[[1,2,3,4,5].map(d=>(0,b.jsx)("span",{onClick:()=>e&&f?.(d),className:(0,c.cn)(d<=Math.round(a||0)?"text-amber-400":"text-gray-300 dark:text-gray-600",e&&"cursor-pointer hover:scale-110 transition-transform"),children:"★"},d)),a&&(0,b.jsx)("span",{className:"ml-1 text-gray-500 dark:text-gray-400 font-medium",children:a.toFixed(1)})]})}])}];
-
-//# sourceMappingURL=components_ui_StarRating_tsx_0v-2ii3._.js.map

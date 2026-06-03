@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
 import { generateLinkCode } from '@/lib/utils'
+import { FAMILY_VERDICTS, EVENT_STATUSES, PLACE_STATUSES } from '@/types'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET!
@@ -35,6 +36,18 @@ async function removeKeyboard(chatId: number, text: string) {
   await sendMessage(chatId, text, {
     reply_markup: { remove_keyboard: true },
   })
+}
+
+function isValidOption(value: string, options: readonly string[]) {
+  return options.includes(value)
+}
+
+function buildVerdictKeyboard() {
+  return [FAMILY_VERDICTS.slice(0, 3), FAMILY_VERDICTS.slice(3)]
+}
+
+function buildYesNoKeyboard() {
+  return [['YES', 'NO']]
 }
 
 async function getLinkedUser(telegramId: string) {
@@ -250,10 +263,10 @@ async function handleConversation(chatId: number, text: string, userId: string |
 
   const PLACE_CATEGORIES = ['Restaurant', 'Cafe', 'Kids Playground', 'Tourist Attraction', 'Mall', 'Hotel', 'Outdoor', 'Other']
   const EVENT_CATEGORIES = ['Kids Event', 'Family Event', 'Bazaar', 'Exhibition', 'Concert', 'Workshop', 'School Event', 'Mall Event', 'Festival', 'Other']
-  const VERDICTS = ['MUST TRY', 'WORTH IT', 'BIASA AJA', 'SKIP', 'COMEBACK', 'Skip']
-  const PLACE_STATUSES = ['WISHLIST', 'VISITED', 'CANCELLED']
-  const EVENT_STATUSES = ['WISHLIST', 'UPCOMING', 'ATTENDED', 'CANCELLED']
   const skip = text.toLowerCase() === 'skip' || text === '-'
+  const verdictOptions = FAMILY_VERDICTS
+  const statusOptions = state.type === 'PLACE' ? PLACE_STATUSES : EVENT_STATUSES
+  const invalidPrompt = 'Please choose one of the available options.'
 
   // PLACE flow
   const placeSteps: Record<string, { next: string; key: string; msg: string; buttons?: string[][] }> = {
@@ -261,14 +274,14 @@ async function handleConversation(chatId: number, text: string, userId: string |
     place_category: { next: 'place_city', key: 'category', msg: 'City? (or "skip")' },
     place_city: { next: 'place_address', key: 'city', msg: 'Address? (or "skip")' },
     place_address: { next: 'place_maps', key: 'address', msg: 'Google Maps URL? (or "skip")' },
-    place_maps: { next: 'place_status', key: 'google_maps_url', msg: 'Status?', buttons: [PLACE_STATUSES] },
-    place_status: { next: 'place_date', key: 'status', msg: 'Visit date? (YYYY-MM-DD, or "skip")' },
-    place_date: { next: 'place_rating', key: 'visit_date', msg: 'Rating? (1-5, or "skip")', buttons: [['1','2','3','4','5','Skip']] },
-    place_rating: { next: 'place_kid', key: 'rating', msg: 'Kid friendly?', buttons: [['Yes', 'No']] },
-    place_kid: { next: 'place_budget', key: 'kid_friendly', msg: 'Budget estimate in IDR? (or "skip")' },
-    place_budget: { next: 'place_verdict', key: 'budget_estimate', msg: 'Family verdict?', buttons: [VERDICTS.slice(0, 3), VERDICTS.slice(3)] },
-    place_verdict: { next: 'place_notes', key: 'family_verdict', msg: 'Any notes? (or "skip")' },
-    place_notes: { next: 'done', key: 'notes', msg: '' },
+    place_maps: { next: 'place_status', key: 'google_maps_url', msg: 'Google Maps URL? (or "skip")' },
+    place_status: { next: 'place_date', key: 'status', msg: 'Status?', buttons: [PLACE_STATUSES] },
+    place_date: { next: 'place_rating', key: 'visit_date', msg: 'Visit date? (YYYY-MM-DD, or "skip")' },
+    place_rating: { next: 'place_kid', key: 'rating', msg: 'Rating? (1-5, or "skip")', buttons: [['1','2','3','4','5','SKIP']] },
+    place_kid: { next: 'place_budget', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard() },
+    place_budget: { next: 'place_verdict', key: 'budget_estimate', msg: 'Budget estimate in IDR? (or "skip")' },
+    place_verdict: { next: 'place_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildVerdictKeyboard() },
+    place_notes: { next: 'done', key: 'notes', msg: 'Any notes? (or "skip")' },
   }
 
   // EVENT flow
@@ -281,12 +294,12 @@ async function handleConversation(chatId: number, text: string, userId: string |
     event_end: { next: 'event_time', key: 'event_end_date', msg: 'Event time? (HH:MM, or "skip")' },
     event_time: { next: 'event_ticket', key: 'event_time', msg: 'Ticket price in IDR? (0 for free, or "skip")' },
     event_ticket: { next: 'event_maps', key: 'ticket_price', msg: 'Google Maps URL? (or "skip")' },
-    event_maps: { next: 'event_status', key: 'google_maps_url', msg: 'Status?', buttons: [EVENT_STATUSES] },
-    event_status: { next: 'event_rating', key: 'status', msg: 'Rating? (1-5, or "skip")', buttons: [['1','2','3','4','5','Skip']] },
-    event_rating: { next: 'event_kid', key: 'rating', msg: 'Kid friendly?', buttons: [['Yes', 'No']] },
-    event_kid: { next: 'event_verdict', key: 'kid_friendly', msg: 'Family verdict?', buttons: [VERDICTS.slice(0, 3), VERDICTS.slice(3)] },
-    event_verdict: { next: 'event_notes', key: 'family_verdict', msg: 'Any notes? (or "skip")' },
-    event_notes: { next: 'done', key: 'notes', msg: '' },
+    event_maps: { next: 'event_status', key: 'google_maps_url', msg: 'Google Maps URL? (or "skip")' },
+    event_status: { next: 'event_rating', key: 'status', msg: 'Status?', buttons: [EVENT_STATUSES] },
+    event_rating: { next: 'event_kid', key: 'rating', msg: 'Rating? (1-5, or "skip")', buttons: [['1','2','3','4','5','SKIP']] },
+    event_kid: { next: 'event_verdict', key: 'kid_friendly', msg: 'Kid friendly?', buttons: buildYesNoKeyboard() },
+    event_verdict: { next: 'event_notes', key: 'family_verdict', msg: 'Family verdict?', buttons: buildVerdictKeyboard() },
+    event_notes: { next: 'done', key: 'notes', msg: 'Any notes? (or "skip")' },
   }
 
   const steps = state.type === 'PLACE' ? placeSteps : eventSteps
@@ -296,11 +309,56 @@ async function handleConversation(chatId: number, text: string, userId: string |
   // Parse value
   let value: unknown = skip ? null : text.trim()
   if (!skip) {
-    if (currentStep.key === 'rating') value = parseFloat(text) || null
-    if (currentStep.key === 'ticket_price' || currentStep.key === 'budget_estimate') value = parseFloat(text) || null
-    if (currentStep.key === 'kid_friendly') value = text.toLowerCase() === 'yes'
-    if (currentStep.key === 'family_verdict') value = text === 'Skip' ? null : text.toUpperCase()
-    if (currentStep.key === 'status') value = text.toUpperCase()
+    if (currentStep.key === 'rating') {
+      const rating = Number(text)
+      if (Number.isNaN(rating) || rating < 1 || rating > 5) {
+        await sendReplyKeyboard(chatId, invalidPrompt, currentStep.buttons || [])
+        return true
+      }
+      value = rating
+    }
+
+    if (currentStep.key === 'ticket_price' || currentStep.key === 'budget_estimate') {
+      const amount = Number(text)
+      if (Number.isNaN(amount) || amount < 0) {
+        await removeKeyboard(chatId, invalidPrompt)
+        return true
+      }
+      value = amount
+    }
+
+    if (currentStep.key === 'kid_friendly') {
+      const normalized = text.trim().toUpperCase()
+      if (normalized !== 'YES' && normalized !== 'NO') {
+        await sendReplyKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
+        return true
+      }
+      value = normalized === 'YES'
+    }
+
+    if (currentStep.key === 'family_verdict') {
+      const normalized = text.trim().toUpperCase()
+      if (!isValidOption(normalized, verdictOptions)) {
+        await sendReplyKeyboard(chatId, invalidPrompt, buildVerdictKeyboard())
+        return true
+      }
+      value = normalized === 'SKIP' ? null : normalized
+    }
+
+    if (currentStep.key === 'status') {
+      const normalized = text.trim().toUpperCase()
+      if (!isValidOption(normalized, statusOptions)) {
+        await sendReplyKeyboard(chatId, invalidPrompt, [statusOptions])
+        return true
+      }
+      value = normalized
+    }
+  } else if (currentStep.key === 'status') {
+    await sendReplyKeyboard(chatId, 'Status is required. Please choose one of the available options.', [statusOptions])
+    return true
+  } else if (currentStep.key === 'kid_friendly') {
+    await sendReplyKeyboard(chatId, invalidPrompt, buildYesNoKeyboard())
+    return true
   }
 
   // Update state

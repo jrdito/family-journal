@@ -1,3 +1,0 @@
-module.exports=[70855,a=>{"use strict";var b=a.i(7997);a.s(["default",0,function(){return(0,b.jsxs)("div",{className:"space-y-5 animate-pulse",children:[(0,b.jsx)("div",{className:"h-8 bg-gray-200 dark:bg-gray-800 rounded-xl w-48"}),(0,b.jsx)("div",{className:"grid grid-cols-2 sm:grid-cols-4 gap-3",children:Array.from({length:8}).map((a,c)=>(0,b.jsx)("div",{className:"card p-4 h-24"},c))}),(0,b.jsx)("div",{className:"grid grid-cols-1 md:grid-cols-2 gap-4",children:Array.from({length:4}).map((a,c)=>(0,b.jsx)("div",{className:"card h-52"},c))})]})}])},61501,a=>{a.n(a.i(70855))}];
-
-//# sourceMappingURL=app_%28app%29_dashboard_loading_tsx_0k_-gko._.js.map
