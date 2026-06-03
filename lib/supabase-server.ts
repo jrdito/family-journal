@@ -28,6 +28,10 @@ export async function createSupabaseServerClient() {
 }
 
 export function createSupabaseAdminClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable for Supabase admin client')
+  }
+
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

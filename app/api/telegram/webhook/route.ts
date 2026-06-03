@@ -96,7 +96,14 @@ First time? Use /link to connect your account.`)
     })
 
     if (insertError) {
-      console.error('Telegram /link insert failed:', insertError)
+      console.error('Telegram /link insert failed:', insertError, {
+        telegramId,
+        username,
+        linkCode,
+        webhookSecretConfigured: !!process.env.TELEGRAM_WEBHOOK_SECRET,
+        supabaseUrlConfigured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        serviceRoleKeyConfigured: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      })
       await sendMessage(chatId, '⚠️ Sorry, something went wrong while creating your link code. Please try /link again.')
       return
     }

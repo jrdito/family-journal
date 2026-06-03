@@ -33,6 +33,9 @@ async function createSupabaseServerClient() {
     });
 }
 function createSupabaseAdminClient() {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable for Supabase admin client');
+    }
     return (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(("TURBOPACK compile-time value", "https://lgqopalxyunfwljxcvao.supabase.co"), process.env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: {
             autoRefreshToken: false,
