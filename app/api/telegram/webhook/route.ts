@@ -82,21 +82,21 @@ First time? Use /link to connect your account.`)
     }
 
     const linkCode = generateLinkCode()
-    // Delete any existing pending link for this telegram_id
-    const { error: deleteError } = await admin.from('telegram_user_links').delete().eq('telegram_id', telegramId)
-    if (deleteError) {
-      console.error('Telegram /link cleanup failed:', deleteError)
-    }
-
-    const { error: insertError } = await admin.from('telegram_user_links').insert({
+    // Reuse the same telegram_id row so users can request a fresh code
+    // without hitting the unique constraint on pending link records.
+    const { error: linkError } = await admin.from('telegram_user_links').upsert({
       telegram_id: telegramId,
       telegram_username: username,
       link_code: linkCode,
       is_linked: false,
+      user_id: null,
+      linked_at: null,
+    }, {
+      onConflict: 'telegram_id',
     })
 
-    if (insertError) {
-      console.error('Telegram /link insert failed:', insertError, {
+    if (linkError) {
+      console.error('Telegram /link upsert failed:', linkError, {
         telegramId,
         username,
         linkCode,
