@@ -8,6 +8,7 @@ export type JournalSource = 'WEB' | 'TELEGRAM'
 
 export type PlaceCategory =
   | 'Restaurant'
+  | 'Kaki Lima'
   | 'Cafe'
   | 'Kids Playground'
   | 'Tourist Attraction'
@@ -116,6 +117,7 @@ export interface JournalFilters {
 
 export const PLACE_CATEGORIES: PlaceCategory[] = [
   'Restaurant',
+  'Kaki Lima',
   'Cafe',
   'Kids Playground',
   'Tourist Attraction',
