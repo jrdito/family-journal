@@ -22,12 +22,13 @@ async function sendMessage(chatId: number, text: string, options?: object) {
   })
 }
 
-async function sendReplyKeyboard(chatId: number, text: string, buttons: string[][]) {
+async function sendInlineKeyboard(chatId: number, text: string, buttons: string[][]) {
   await sendMessage(chatId, text, {
     reply_markup: {
-      keyboard: buttons.map(row => row.map(text => ({ text }))),
-      one_time_keyboard: true,
-      resize_keyboard: true,
+      inline_keyboard: buttons.map(row => row.map(text => ({
+        text,
+        callback_data: text,
+      }))),
     },
   })
 }
@@ -52,14 +53,6 @@ function buildChoiceKeyboard(options: string[], columns = 1) {
 
 function buildYesNoKeyboard() {
   return buildChoiceKeyboard(['YES', 'NO'], 1)
-}
-
-function buildSkipKeyboard() {
-  return [['SKIP']]
-}
-
-function getPromptKeyboard(step?: { buttons?: string[][] }) {
-  return step?.buttons || buildSkipKeyboard()
 }
 
 function findOption(input: string, options: string[]) {
@@ -335,14 +328,14 @@ async function handleConversation(chatId: number, text: string, userId: string |
     const normalized = text.trim().toUpperCase()
     if (skip || normalized === 'SKIP') {
       if (currentStep.required) {
-        await sendReplyKeyboard(chatId, 'Status is required. Please choose one of the available options.', getPromptKeyboard(currentStep))
+        await sendInlineKeyboard(chatId, 'Status is required. Please choose one of the available options.', currentStep.buttons || buildChoiceKeyboard(currentStep.options, 1))
         return true
       }
       value = null
     } else {
       const matched = findOption(text, currentStep.options)
       if (!matched) {
-        await sendReplyKeyboard(chatId, invalidPrompt, getPromptKeyboard(currentStep))
+        await sendInlineKeyboard(chatId, invalidPrompt, currentStep.buttons || buildChoiceKeyboard(currentStep.options, 1))
         return true
       }
 
@@ -393,7 +386,11 @@ async function handleConversation(chatId: number, text: string, userId: string |
   }
 
   const nextStep = steps[currentStep.next]
-  await sendReplyKeyboard(chatId, nextStep?.msg || 'Next...', getPromptKeyboard(nextStep))
+  if (nextStep?.buttons) {
+    await sendInlineKeyboard(chatId, nextStep.msg, nextStep.buttons)
+  } else {
+    await removeKeyboard(chatId, nextStep?.msg || 'Next...')
+  }
 
   return true
 }
@@ -407,6 +404,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    if (body.callback_query) {
+      const callbackQuery = body.callback_query
+      const chatId: number = callbackQuery.message?.chat.id
+      const from = callbackQuery.from
+
+      await fetch(`${API_URL}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQuery.id }),
+      })
+
+      if (chatId && callbackQuery.data) {
+        const linkedUser = await getLinkedUser(String(from.id))
+        await handleConversation(chatId, callbackQuery.data, linkedUser?.user_id || null)
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
     const message = body.message || body.edited_message
     if (!message) return NextResponse.json({ ok: true })
 

@@ -77,31 +77,71 @@ export default function JournalForm({ userId, journal, mode }: Props) {
   }
 
   async function uploadPhotos(journalId: string) {
-    if (photoFiles.length === 0) return
-    setUploading(true)
+  if (photoFiles.length === 0) return
+  setUploading(true)
+  try {
     for (const file of photoFiles) {
       const timestamp = Date.now()
       const filePath = `users/${userId}/journals/${journalId}/${timestamp}-${file.name}`
-      const { error: uploadError } = await supabase.storage
-        .from('journal-photos')
-        .upload(filePath, file)
+      
+      console.log('Uploading file:', filePath)
+      
+      // Upload file ke storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('family-journal-photos') // ← GANTI KE NAMA BUCKET ANDA
+        .upload(filePath, file, {
+          upsert: false,
+          contentType: file.type,
+        })
+      
       if (uploadError) {
-        toast.error(`Failed to upload ${file.name}`)
+        console.error('Upload error:', uploadError)
+        toast.error(`Failed to upload ${file.name}: ${uploadError.message}`)
         continue
       }
-      const { data: urlData } = supabase.storage.from('journal-photos').getPublicUrl(filePath)
-      await supabase.from('journal_photos').insert({
+
+      console.log('File uploaded:', data)
+      
+      // Generate signed URL (valid 1 tahun)
+      const { data: urlData, error: urlError } = await supabase.storage
+        .from('family-journal-photos') // ← GANTI KE NAMA BUCKET ANDA
+        .createSignedUrl(filePath, 60 * 60 * 24 * 365)
+      
+      if (urlError) {
+        console.error('URL error:', urlError)
+        toast.error(`Failed to generate URL: ${urlError.message}`)
+        continue
+      }
+
+      console.log('Signed URL:', urlData?.signedUrl)
+      
+      // Simpan metadata ke database
+      const { error: dbError } = await supabase.from('journal_photos').insert({
         journal_id: journalId,
         user_id: userId,
         file_name: file.name,
         file_path: filePath,
-        file_url: urlData.publicUrl,
+        file_url: urlData.signedUrl,
         mime_type: file.type,
         file_size: file.size,
       })
+
+      if (dbError) {
+        console.error('Database error:', dbError)
+        toast.error(`Failed to save photo metadata: ${dbError.message}`)
+        continue
+      }
+
+      console.log('Photo saved to database')
+      toast.success(`${file.name} uploaded!`)
     }
+  } catch (error) {
+    console.error('Upload error:', error)
+    toast.error('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
+  } finally {
     setUploading(false)
   }
+}
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
