@@ -9,6 +9,7 @@ import {
   PLACE_CATEGORIES, EVENT_CATEGORIES, MOVIE_CATEGORIES, FAMILY_VERDICTS,
   PLACE_STATUSES, EVENT_STATUSES, MOVIE_STATUSES
 } from '@/types'
+import PhotoOCR from '@/components/journal/PhotoOCR'
 import StarRating from '@/components/ui/StarRating'
 
 interface Props {
@@ -376,6 +377,21 @@ export default function JournalForm({ userId, journal, mode }: Props) {
           />
         </div>
       </div>
+
+      
+      {/* OCR Section */}
+<div className="card p-5 space-y-3 border-2 border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-900/10">
+  <h3 className="font-bold text-blue-700 dark:text-blue-400 text-sm flex items-center gap-2">
+    🤖 Smart Fill (Beta)
+  </h3>
+  <PhotoOCR
+    onExtract={(data) => {
+      if (data.name) setName(data.name)
+      if (data.city) setCity(data.city)
+      if (data.address) setAddress(data.address)
+    }}
+  />
+</div>
 
       {/* Photo Upload */}
       <div className="card p-5 space-y-3">

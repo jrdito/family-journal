@@ -81,6 +81,7 @@ export default function TimelineView({ initialJournals }: Props) {
             <option value="">All Types</option>
             <option value="PLACE">Place</option>
             <option value="EVENT">Event</option>
+            <option value="MOVIE">Movie</option>            
           </select>
           <select className="input text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
             <option value="">All Categories</option>
