@@ -2,12 +2,12 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, MapPin, Calendar, Edit, Trash2, Eye, Baby, Filter, X } from 'lucide-react'
+import { Search, MapPin, Calendar, Edit, Trash2, Eye, Baby, Filter, X, Film } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { cn, formatDate, getStatusColor, getVerdictColor, getTypeColor } from '@/lib/utils'
 import type { FamilyJournal, JournalType, JournalStatus, FamilyVerdict } from '@/types'
-import { PLACE_CATEGORIES, EVENT_CATEGORIES, FAMILY_VERDICTS, PLACE_STATUSES, EVENT_STATUSES } from '@/types'
+import { PLACE_CATEGORIES, EVENT_CATEGORIES, MOVIE_CATEGORIES, FAMILY_VERDICTS, PLACE_STATUSES, EVENT_STATUSES, MOVIE_STATUSES } from '@/types'
 import StarRating from '@/components/ui/StarRating'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 
@@ -57,6 +57,8 @@ export default function JournalList({ initialJournals }: Props) {
   }
 
   const activeFilterCount = [typeFilter, statusFilter, categoryFilter, verdictFilter, kidFilter !== '' ? 1 : ''].filter(Boolean).length
+  
+  const allCategories = [...new Set([...PLACE_CATEGORIES, ...EVENT_CATEGORIES, ...MOVIE_CATEGORIES])]
 
   return (
     <div className="space-y-4">
@@ -100,16 +102,17 @@ export default function JournalList({ initialJournals }: Props) {
               <option value="">All Types</option>
               <option value="PLACE">Place</option>
               <option value="EVENT">Event</option>
+              <option value="MOVIE">Movie</option>
             </select>
             <select className="input text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value as JournalStatus | '')}>
               <option value="">All Statuses</option>
-              {[...PLACE_STATUSES, ...EVENT_STATUSES.filter(s => !PLACE_STATUSES.includes(s as 'WISHLIST' | 'CANCELLED'))].map(s => (
+              {[...PLACE_STATUSES, ...EVENT_STATUSES.filter(s => !PLACE_STATUSES.includes(s as 'WISHLIST' | 'CANCELLED')), ...MOVIE_STATUSES.filter(s => !PLACE_STATUSES.includes(s as 'WISHLIST' | 'CANCELLED'))].map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
             <select className="input text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
               <option value="">All Categories</option>
-              {[...PLACE_CATEGORIES, ...EVENT_CATEGORIES].map(c => <option key={c} value={c}>{c}</option>)}
+              {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <select className="input text-sm" value={verdictFilter} onChange={e => setVerdictFilter(e.target.value as FamilyVerdict | '')}>
               <option value="">All Verdicts</option>
@@ -144,14 +147,14 @@ export default function JournalList({ initialJournals }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 mb-1">
                     <span className={cn('badge', getTypeColor(journal.type))}>
-                      {journal.type === 'PLACE' ? <MapPin className="w-3 h-3 mr-1" /> : <Calendar className="w-3 h-3 mr-1" />}
+                      {journal.type === 'PLACE' ? <MapPin className="w-3 h-3 mr-1" /> : journal.type === 'EVENT' ? <Calendar className="w-3 h-3 mr-1" /> : <Film className="w-3 h-3 mr-1" />}
                       {journal.type}
                     </span>
                     <span className={cn('badge', getStatusColor(journal.status))}>{journal.status}</span>
                     {journal.family_verdict && (
                       <span className={cn('badge', getVerdictColor(journal.family_verdict))}>{journal.family_verdict}</span>
                     )}
-                    {journal.kid_friendly && (
+                    {journal.kid_friendly && journal.type !== 'MOVIE' && (
                       <span className="badge bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400">
                         <Baby className="w-3 h-3 mr-1" />Kid
                       </span>

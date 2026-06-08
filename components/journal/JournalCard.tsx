@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Calendar, Baby } from 'lucide-react'
+import { MapPin, Calendar, Baby, Film } from 'lucide-react'
 import { cn, formatDate, getStatusColor, getVerdictColor, getTypeColor } from '@/lib/utils'
 import type { FamilyJournal } from '@/types'
 import StarRating from '@/components/ui/StarRating'
@@ -14,10 +14,18 @@ export default function JournalCard({ journal }: { journal: FamilyJournal }) {
           <img src={photo.file_url} alt={journal.name} className="w-full h-full object-cover" />
         </div>
       ) : (
-        <div className="aspect-video bg-gradient-to-br from-orange-100 to-amber-100 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
+        <div className={`aspect-video flex items-center justify-center ${
+          journal.type === 'PLACE'
+            ? 'bg-gradient-to-br from-orange-100 to-amber-100 dark:from-gray-800'
+            : journal.type === 'EVENT'
+            ? 'bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-gray-800'
+            : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-gray-800'
+        } dark:to-gray-700`}>
           {journal.type === 'PLACE'
             ? <MapPin className="w-8 h-8 text-orange-300 dark:text-gray-600" />
-            : <Calendar className="w-8 h-8 text-blue-300 dark:text-gray-600" />
+            : journal.type === 'EVENT'
+            ? <Calendar className="w-8 h-8 text-blue-300 dark:text-gray-600" />
+            : <Film className="w-8 h-8 text-purple-300 dark:text-gray-600" />
           }
         </div>
       )}
@@ -25,7 +33,7 @@ export default function JournalCard({ journal }: { journal: FamilyJournal }) {
         <div className="flex flex-wrap gap-1">
           <span className={cn('badge text-xs', getTypeColor(journal.type))}>{journal.type}</span>
           <span className={cn('badge text-xs', getStatusColor(journal.status))}>{journal.status}</span>
-          {journal.kid_friendly && (
+          {journal.kid_friendly && journal.type !== 'MOVIE' && (
             <span className="badge text-xs bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400">
               <Baby className="w-3 h-3" />
             </span>

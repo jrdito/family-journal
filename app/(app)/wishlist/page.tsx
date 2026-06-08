@@ -26,7 +26,7 @@ export default async function WishlistPage() {
           <h1 className="page-header flex items-center gap-2">
             <Heart className="w-6 h-6 text-rose-500" />Wishlist
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Places & events you want to visit</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Places, events & movies you want to experience</p>
         </div>
         <Link href="/journals/new" className="btn-primary text-xs py-2">
           <Plus className="w-3.5 h-3.5" />Add
@@ -57,7 +57,7 @@ export default async function WishlistPage() {
         <div className="card p-16 text-center">
           <p className="text-4xl mb-3">💭</p>
           <p className="font-semibold text-gray-700 dark:text-gray-300">Your wishlist is empty</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Start saving places you want to visit!</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Start saving places, events & movies you want to experience!</p>
           <Link href="/journals/new" className="btn-primary mt-4 inline-flex">Add to Wishlist</Link>
         </div>
       ) : null}

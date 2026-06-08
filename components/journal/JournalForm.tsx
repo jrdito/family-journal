@@ -2,12 +2,12 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, X, MapPin, Calendar, Plus } from 'lucide-react'
+import { Upload, X, MapPin, Calendar, Plus, Film } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import type { FamilyJournal, JournalType } from '@/types'
 import {
-  PLACE_CATEGORIES, EVENT_CATEGORIES, FAMILY_VERDICTS,
-  PLACE_STATUSES, EVENT_STATUSES
+  PLACE_CATEGORIES, EVENT_CATEGORIES, MOVIE_CATEGORIES, FAMILY_VERDICTS,
+  PLACE_STATUSES, EVENT_STATUSES, MOVIE_STATUSES
 } from '@/types'
 import StarRating from '@/components/ui/StarRating'
 
@@ -45,8 +45,8 @@ export default function JournalForm({ userId, journal, mode }: Props) {
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([])
 
-  const categories = type === 'PLACE' ? PLACE_CATEGORIES : EVENT_CATEGORIES
-  const statuses = type === 'PLACE' ? PLACE_STATUSES : EVENT_STATUSES
+  const categories = type === 'PLACE' ? PLACE_CATEGORIES : type === 'EVENT' ? EVENT_CATEGORIES : MOVIE_CATEGORIES
+  const statuses = type === 'PLACE' ? PLACE_STATUSES : type === 'EVENT' ? EVENT_STATUSES : MOVIE_STATUSES
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
@@ -77,71 +77,40 @@ export default function JournalForm({ userId, journal, mode }: Props) {
   }
 
   async function uploadPhotos(journalId: string) {
-  if (photoFiles.length === 0) return
-  setUploading(true)
-  try {
+    if (photoFiles.length === 0) return
+    setUploading(true)
     for (const file of photoFiles) {
       const timestamp = Date.now()
       const filePath = `users/${userId}/journals/${journalId}/${timestamp}-${file.name}`
       
-      console.log('Uploading file:', filePath)
-      
-      // Upload file ke storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('family-journal-photos') // ← GANTI KE NAMA BUCKET ANDA
+      const { error: uploadError } = await supabase.storage
+        .from('family-journal-photos')
         .upload(filePath, file, {
           upsert: false,
           contentType: file.type,
         })
       
       if (uploadError) {
-        console.error('Upload error:', uploadError)
-        toast.error(`Failed to upload ${file.name}: ${uploadError.message}`)
+        toast.error(`Failed to upload ${file.name}`)
         continue
       }
 
-      console.log('File uploaded:', data)
-      
-      // Generate signed URL (valid 1 tahun)
-      const { data: urlData, error: urlError } = await supabase.storage
-        .from('family-journal-photos') // ← GANTI KE NAMA BUCKET ANDA
+      const { data: urlData } = await supabase.storage
+        .from('family-journal-photos')
         .createSignedUrl(filePath, 60 * 60 * 24 * 365)
-      
-      if (urlError) {
-        console.error('URL error:', urlError)
-        toast.error(`Failed to generate URL: ${urlError.message}`)
-        continue
-      }
 
-      console.log('Signed URL:', urlData?.signedUrl)
-      
-      // Simpan metadata ke database
-      const { error: dbError } = await supabase.from('journal_photos').insert({
+      await supabase.from('journal_photos').insert({
         journal_id: journalId,
         user_id: userId,
         file_name: file.name,
         file_path: filePath,
-        file_url: urlData.signedUrl,
+        file_url: urlData?.signedUrl || null,
         mime_type: file.type,
         file_size: file.size,
       })
-
-      if (dbError) {
-        console.error('Database error:', dbError)
-        toast.error(`Failed to save photo metadata: ${dbError.message}`)
-        continue
-      }
-
-      console.log('Photo saved to database')
-      toast.success(`${file.name} uploaded!`)
     }
-  } catch (error) {
-    console.error('Upload error:', error)
-    toast.error('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
-  } finally {
     setUploading(false)
   }
-}
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -160,7 +129,7 @@ export default function JournalForm({ userId, journal, mode }: Props) {
         location_name: locationName.trim() || null,
         google_maps_url: googleMapsUrl.trim() || null,
         status,
-        visit_date: type === 'PLACE' && visitDate ? visitDate : null,
+        visit_date: (type === 'PLACE' || type === 'MOVIE') && (visitDate || eventStartDate) ? (visitDate || eventStartDate) : null,
         event_start_date: type === 'EVENT' && eventStartDate ? eventStartDate : null,
         event_end_date: type === 'EVENT' && eventEndDate ? eventEndDate : null,
         event_time: type === 'EVENT' && eventTime ? eventTime : null,
@@ -168,7 +137,7 @@ export default function JournalForm({ userId, journal, mode }: Props) {
         ticket_link: ticketLink.trim() || null,
         rating: rating || null,
         kid_friendly: kidFriendly,
-        budget_estimate: budgetEstimate ? parseFloat(budgetEstimate) : null,
+        budget_estimate: type === 'PLACE' && budgetEstimate ? parseFloat(budgetEstimate) : null,
         family_verdict: familyVerdict || null,
         notes: notes.trim() || null,
         source: 'WEB',
@@ -207,8 +176,8 @@ export default function JournalForm({ userId, journal, mode }: Props) {
       {/* Type Selector */}
       <div className="card p-5">
         <label className="label text-base mb-3">Entry Type</label>
-        <div className="grid grid-cols-2 gap-3">
-          {(['PLACE', 'EVENT'] as JournalType[]).map(t => (
+        <div className="grid grid-cols-3 gap-3">
+          {(['PLACE', 'EVENT', 'MOVIE'] as JournalType[]).map(t => (
             <button
               key={t}
               type="button"
@@ -217,11 +186,13 @@ export default function JournalForm({ userId, journal, mode }: Props) {
                 type === t
                   ? t === 'PLACE'
                     ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-900/20'
-                    : 'border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-900/20'
+                    : t === 'EVENT'
+                    ? 'border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-900/20'
+                    : 'border-purple-500 bg-purple-50 text-purple-600 dark:bg-purple-900/20'
                   : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300'
               }`}
             >
-              {t === 'PLACE' ? <MapPin className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
+              {t === 'PLACE' ? <MapPin className="w-4 h-4" /> : t === 'EVENT' ? <Calendar className="w-4 h-4" /> : <Film className="w-4 h-4" />}
               {t}
             </button>
           ))}
@@ -230,10 +201,12 @@ export default function JournalForm({ userId, journal, mode }: Props) {
 
       {/* Main Fields */}
       <div className="card p-5 space-y-4">
-        <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">{type === 'PLACE' ? 'Place' : 'Event'} Details</h3>
+        <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">
+          {type === 'PLACE' ? 'Place' : type === 'EVENT' ? 'Event' : 'Movie'} Details
+        </h3>
 
         <div>
-          <label className="label">{type === 'PLACE' ? 'Place Name' : 'Event Name'} *</label>
+          <label className="label">{type === 'PLACE' ? 'Place Name' : type === 'EVENT' ? 'Event Name' : 'Movie Title'} *</label>
           <input className="input" placeholder="Enter name..." value={name} onChange={e => setName(e.target.value)} required />
         </div>
 
@@ -258,25 +231,34 @@ export default function JournalForm({ userId, journal, mode }: Props) {
             <label className="label">City</label>
             <input className="input" placeholder="City..." value={city} onChange={e => setCity(e.target.value)} />
           </div>
-          {type === 'PLACE' ? (
+          {type === 'PLACE' && (
             <div>
               <label className="label">Visit Date</label>
               <input type="date" className="input" value={visitDate} onChange={e => setVisitDate(e.target.value)} />
             </div>
-          ) : (
+          )}
+          {type === 'EVENT' && (
             <div>
               <label className="label">Start Date</label>
               <input type="date" className="input" value={eventStartDate} onChange={e => setEventStartDate(e.target.value)} />
             </div>
           )}
+          {type === 'MOVIE' && (
+            <div>
+              <label className="label">Watch Date</label>
+              <input type="date" className="input" value={visitDate} onChange={e => setVisitDate(e.target.value)} />
+            </div>
+          )}
         </div>
 
-        {type === 'PLACE' ? (
+        {type === 'PLACE' && (
           <div>
             <label className="label">Address</label>
             <input className="input" placeholder="Full address..." value={address} onChange={e => setAddress(e.target.value)} />
           </div>
-        ) : (
+        )}
+
+        {type === 'EVENT' && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">End Date</label>
@@ -286,6 +268,13 @@ export default function JournalForm({ userId, journal, mode }: Props) {
               <label className="label">Event Time</label>
               <input type="time" className="input" value={eventTime} onChange={e => setEventTime(e.target.value)} />
             </div>
+          </div>
+        )}
+
+        {type === 'MOVIE' && (
+          <div>
+            <label className="label">Location (Cinema/Home)</label>
+            <input className="input" placeholder="e.g., CGV Senayan, Home" value={locationName} onChange={e => setLocationName(e.target.value)} />
           </div>
         )}
 
@@ -361,19 +350,21 @@ export default function JournalForm({ userId, journal, mode }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setKidFriendly(!kidFriendly)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
-              kidFriendly
-                ? 'border-pink-400 bg-pink-50 text-pink-600 dark:bg-pink-900/20'
-                : 'border-gray-200 dark:border-gray-700 text-gray-500'
-            }`}
-          >
-            👶 Kid Friendly
-          </button>
-        </div>
+        {type !== 'MOVIE' && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setKidFriendly(!kidFriendly)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+                kidFriendly
+                  ? 'border-pink-400 bg-pink-50 text-pink-600 dark:bg-pink-900/20'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-500'
+              }`}
+            >
+              👶 Kid Friendly
+            </button>
+          </div>
+        )}
 
         <div>
           <label className="label">Notes</label>

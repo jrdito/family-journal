@@ -1,17 +1,15 @@
 export type UserRole = 'user' | 'admin'
-export type JournalType = 'PLACE' | 'EVENT'
+export type JournalType = 'PLACE' | 'EVENT' | 'MOVIE'
 export type PlaceStatus = 'WISHLIST' | 'VISITED' | 'CANCELLED'
 export type EventStatus = 'WISHLIST' | 'UPCOMING' | 'ATTENDED' | 'CANCELLED'
-export type JournalStatus = PlaceStatus | EventStatus
+export type MovieStatus = 'WISHLIST' | 'WATCHED' | 'CANCELLED'
+export type JournalStatus = PlaceStatus | EventStatus | MovieStatus
 export type FamilyVerdict = 'MUST TRY' | 'WORTH IT' | 'BIASA AJA' | 'SKIP' | 'COMEBACK'
 export type JournalSource = 'WEB' | 'TELEGRAM'
 
 export type PlaceCategory =
   | 'Restaurant'
-  | 'Depot'  
-  | 'Kaki Lima'
   | 'Cafe'
-  | 'Coffee Shop'
   | 'Kids Playground'
   | 'Tourist Attraction'
   | 'Mall'
@@ -29,6 +27,18 @@ export type EventCategory =
   | 'School Event'
   | 'Mall Event'
   | 'Festival'
+  | 'Other'
+
+export type MovieCategory =
+  | 'Action'
+  | 'Comedy'
+  | 'Drama'
+  | 'Horror'
+  | 'Romance'
+  | 'Animation'
+  | 'Thriller'
+  | 'Sci-Fi'
+  | 'Fantasy'
   | 'Other'
 
 export interface Profile {
@@ -98,9 +108,10 @@ export interface TelegramUserLink {
 export interface DashboardStats {
   totalPlaces: number
   totalEvents: number
+  totalMovies: number
   totalWishlist: number
   totalVisited: number
-  totalUpcoming: number
+  totalWatched: number
   averageRating: number
   kidFriendlyPlaces: number
   mustTryPlaces: number
@@ -119,10 +130,7 @@ export interface JournalFilters {
 
 export const PLACE_CATEGORIES: PlaceCategory[] = [
   'Restaurant',
-  'Depot',
-  'Kaki Lima',
   'Cafe',
-  'Coffee Shop',
   'Kids Playground',
   'Tourist Attraction',
   'Mall',
@@ -144,6 +152,19 @@ export const EVENT_CATEGORIES: EventCategory[] = [
   'Other',
 ]
 
+export const MOVIE_CATEGORIES: MovieCategory[] = [
+  'Action',
+  'Comedy',
+  'Drama',
+  'Horror',
+  'Romance',
+  'Animation',
+  'Thriller',
+  'Sci-Fi',
+  'Fantasy',
+  'Other',
+]
+
 export const FAMILY_VERDICTS: FamilyVerdict[] = [
   'MUST TRY',
   'WORTH IT',
@@ -154,3 +175,4 @@ export const FAMILY_VERDICTS: FamilyVerdict[] = [
 
 export const PLACE_STATUSES: PlaceStatus[] = ['WISHLIST', 'VISITED', 'CANCELLED']
 export const EVENT_STATUSES: EventStatus[] = ['WISHLIST', 'UPCOMING', 'ATTENDED', 'CANCELLED']
+export const MOVIE_STATUSES: MovieStatus[] = ['WISHLIST', 'WATCHED', 'CANCELLED']

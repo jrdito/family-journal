@@ -29,6 +29,7 @@ export function getStatusColor(status: JournalStatus): string {
     WISHLIST: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     VISITED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     ATTENDED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    WATCHED: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     UPCOMING: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     CANCELLED: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
   }
@@ -47,9 +48,10 @@ export function getVerdictColor(verdict: FamilyVerdict | null | undefined): stri
 }
 
 export function getTypeColor(type: JournalType): string {
-  return type === 'PLACE'
-    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
-    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  if (type === 'PLACE') return 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
+  if (type === 'EVENT') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  if (type === 'MOVIE') return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+  return 'bg-gray-100 text-gray-700'
 }
 
 export function renderStars(rating: number | null | undefined): string {
