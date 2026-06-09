@@ -9,6 +9,9 @@ export type JournalSource = 'WEB' | 'TELEGRAM'
 
 export type PlaceCategory =
   | 'Restaurant'
+  | 'Depot'
+  | 'Coffee Shop'
+  | 'Kaki Lima'      
   | 'Cafe'
   | 'Kids Playground'
   | 'Tourist Attraction'
@@ -19,6 +22,7 @@ export type PlaceCategory =
 
 export type EventCategory =
   | 'Kids Event'
+  | 'Pop-Up Market'
   | 'Family Event'
   | 'Bazaar'
   | 'Exhibition'
@@ -130,6 +134,9 @@ export interface JournalFilters {
 
 export const PLACE_CATEGORIES: PlaceCategory[] = [
   'Restaurant',
+  'Depot',
+  'Coffee Shop',
+  'Kaki Lima',
   'Cafe',
   'Kids Playground',
   'Tourist Attraction',
@@ -141,6 +148,7 @@ export const PLACE_CATEGORIES: PlaceCategory[] = [
 
 export const EVENT_CATEGORIES: EventCategory[] = [
   'Kids Event',
+  'Pop-Up Market',
   'Family Event',
   'Bazaar',
   'Exhibition',
